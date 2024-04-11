@@ -28,6 +28,8 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
 unsigned int loadCubemap(vector<std::string> faces);
 
+unsigned int loadTexture(char const *path);
+
 void renderQuad();
 
 // settings
@@ -181,10 +183,15 @@ int main() {
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
     Shader shaderBlur("resources/shaders/blur.vs", "resources/shaders/blur.fs");
     Shader shaderBloomFinal("resources/shaders/bloom_final.vs", "resources/shaders/bloom_final.fs");
+    Shader blendingShader("resources/shaders/blending.vs", "resources/shaders/blending.fs");
     // load models
     // -----------
     //church
     Model churchModel("resources/objects/church/StAlphage2024_02.obj");
+    churchModel.SetShaderTextureNamePrefix("material.");
+
+    //shield
+    Model shieldModel("resources/objects/shield/model.obj");
     churchModel.SetShaderTextureNamePrefix("material.");
 
     //Bloom
@@ -289,6 +296,24 @@ int main() {
             -1.0f, -1.0f,  1.0f,
             1.0f, -1.0f,  1.0f
     };
+    //Grass vertices
+    float transparentVertices[] = {
+            // positions         // texture Coords (swapped y coordinates because texture is flipped upside down)
+            0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
+            0.0f, -0.5f,  0.0f,  0.0f,  1.0f,
+            1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
+
+            0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
+            1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
+            1.0f,  0.5f,  0.0f,  1.0f,  0.0f
+    };
+
+    //Grass positions
+    vector<glm::vec3> grassPositions;
+    for(int i =0;i<10;i++){
+        grassPositions.push_back(glm::vec3(rand()%4 - 2.0f,0.1f,rand()%7-5.0f));
+    }
+
     //skybox VAO
     unsigned int skyboxVAO, skyboxVBO;
     glGenVertexArrays(1, &skyboxVAO);
@@ -314,6 +339,19 @@ int main() {
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
 
+    unsigned int transparentVAO, transparentVBO;
+    glGenVertexArrays(1, &transparentVAO);
+    glGenBuffers(1, &transparentVBO);
+    glBindVertexArray(transparentVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, transparentVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), transparentVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glBindVertexArray(0);
+    unsigned int grassTexture = loadTexture(FileSystem::getPath("resources/textures/grass.png").c_str());
+
     PointLight& pointLight = programState->pointLight;
     pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
     pointLight.ambient = glm::vec3(0.1, 0.1, 0.1);
@@ -331,6 +369,8 @@ int main() {
     shaderBloomFinal.use();
     shaderBloomFinal.setInt("scene", 0);
     shaderBloomFinal.setInt("bloomBlur", 1);
+    blendingShader.use();
+    blendingShader.setInt("texture1", 0);
 
     // draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -377,7 +417,7 @@ int main() {
         ourShader.setVec3("dirLight.diffuse", glm::vec3(programState->dirLightAmbDiffSpec.y));
         ourShader.setVec3("dirLight.specular", glm::vec3(programState->dirLightAmbDiffSpec.z));
 
-        ourShader.setVec3("pointLights[0].position", glm::vec3(-0.8f ,0.05f, 2.7f));
+        ourShader.setVec3("pointLights[0].position", glm::vec3(-0.1f +sin(currentFrame),0.5f, -4.6f)+cos(currentFrame));
         ourShader.setVec3("pointLights[0].ambient", pointLight.ambient);
         ourShader.setVec3("pointLights[0].diffuse", pointLight.diffuse);
         ourShader.setVec3("pointLights[0].specular", pointLight.specular);
@@ -385,7 +425,7 @@ int main() {
         ourShader.setFloat("pointLights[0].linear", pointLight.linear);
         ourShader.setFloat("pointLights[0].quadratic", pointLight.quadratic);
 
-        ourShader.setVec3("pointLights[1].position", glm::vec3(-1.2f ,0.3f, -0.05f));
+        ourShader.setVec3("pointLights[1].position", glm::vec3(-0.1f +cos(currentFrame),0.5f, -4.6f+sin(currentFrame)));
         ourShader.setVec3("pointLights[1].ambient", pointLight.ambient);
         ourShader.setVec3("pointLights[1].diffuse", pointLight.diffuse);
         ourShader.setVec3("pointLights[1].specular", pointLight.specular);
@@ -420,6 +460,34 @@ int main() {
         modelChurch = glm::rotate(modelChurch,glm::radians(-90.0f), glm::vec3(1.0f ,0.0f, 0.0f));
         ourShader.setMat4("model", modelChurch);
         churchModel.Draw(ourShader);
+        //render shield
+        glm::mat4 modelShield = glm::mat4(1.0f);
+        modelShield = glm::translate(modelShield,glm::vec3(-0.1f ,-0.15f, -4.6f));
+        modelShield = glm::scale(modelShield, glm::vec3(0.05f));
+        modelShield = glm::rotate(modelShield,glm::radians(sin(currentFrame)*10.0f), glm::vec3(1.0f ,0.0f, 0.0f));
+        modelShield = glm::rotate(modelShield,glm::radians(currentFrame*40.0f), glm::vec3(0.0f ,1.0f, 0.0f));
+        modelShield = glm::rotate(modelShield,glm::radians(cos(currentFrame)*10.0f), glm::vec3(0.0f ,0.0f, 1.0f));
+        ourShader.setMat4("model", modelShield);
+        shieldModel.Draw(ourShader);
+
+
+        glDisable(GL_CULL_FACE);
+        // grass
+        blendingShader.use();
+        glm::mat4 modelGrass = glm::mat4(1.0f);
+        blendingShader.setMat4("projection", projection);
+        blendingShader.setMat4("view", view);
+        glBindVertexArray(transparentVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, grassTexture);
+        for (unsigned int i = 0; i < 10; i++)
+        {
+            modelGrass = glm::mat4(1.0f);
+            modelGrass = glm::scale(modelGrass, glm::vec3(0.5f));
+            modelGrass = glm::translate(modelGrass, grassPositions[i]);
+            blendingShader.setMat4("model", modelGrass);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
 
         //draw skybox
         glDepthFunc(GL_LEQUAL);
@@ -664,4 +732,40 @@ void renderQuad()
     glBindVertexArray(quadVAO);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindVertexArray(0);
+}
+unsigned int loadTexture(char const *path)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
+
+    return textureID;
 }
