@@ -20,7 +20,19 @@ Year: 2023/2024
 + `B` to turn on/off bloom
 + `F` to turn on/off spotlight
 + `E` to increase exposure 
-+ `Q` to decrease exposure 
++ `Q` to decrease exposure
+
+## Implemented techniques:
+- **Required:**
+    - Blending		
+    - Face culling              
+    - Advanced lighting
+- **Models**
+    - **Group A:**
+       - Cubemaps - skybox	
+       - Framebuffers		
+     - **Group B:**
+       -  HDR, Bloom	
 
 ## Gallery
 
@@ -29,4 +41,5 @@ Year: 2023/2024
 ![slika3](https://github.com/lule04/matf-grafika/assets/155033071/377890bf-1988-4cf2-999e-6afbc0b295f4)
 ![slika4](https://github.com/lule04/matf-grafika/assets/155033071/4c2f9aed-f3c8-4bcf-a535-1e63ffc1a102)
 
-
+### YouTube link:
+https://youtu.be/LpNpF3F8G-k
