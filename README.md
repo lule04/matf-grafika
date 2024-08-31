@@ -30,9 +30,11 @@ Year: 2023/2024
 - **Models**
     - **Group A:**
        - Cubemaps - skybox	
-       - Framebuffers		
+       - Framebuffers
+       - Anti Aliasing
      - **Group B:**
-       -  HDR, Bloom	
+       -  HDR, Bloom
+       -  Parallax Mapping
 
 ## Gallery
 
